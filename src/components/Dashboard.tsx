@@ -14,12 +14,11 @@ import {
   Archive,
   ArrowLeft,
   BookOpen,
-  CalendarDays,
   Check,
+  ChevronRight,
   CloudUpload,
   Loader2,
   LogOut,
-  Plus,
 } from 'lucide-react'
 import { auth, db } from '../firebase'
 import {
@@ -30,7 +29,8 @@ import {
   createEmptyPlan,
   currentCycleStart,
   formatCycleRange,
-  formatShortDate,
+  formatFullDate,
+  formatWeekRange,
   getCycleDate,
   nextCycleStart,
   type Day,
@@ -54,14 +54,25 @@ type View =
 const cellKey = (week: Week, day: Day, subject: Subject) =>
   `${week}|${day}|${subject}`
 
+const DAY_ABBR: Record<Day, string> = {
+  Monday: 'MON', Tuesday: 'TUE', Wednesday: 'WED', Thursday: 'THU', Friday: 'FRI',
+}
+
+function getInitialDay(): Day {
+  const dow = new Date().getDay()
+  return dow >= 1 && dow <= 5 ? DAYS[dow - 1] : 'Monday'
+}
+
 export default function Dashboard() {
   const [plan, setPlan] = useState<SchedulePlan | null>(null)
   const [activeWeek, setActiveWeek] = useState<Week>('week1')
+  const [activeDay, setActiveDay] = useState<Day>(getInitialDay())
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [view, setView] = useState<View>({ type: 'current' })
   const [showConfirm, setShowConfirm] = useState(false)
   const [cycling, setCycling] = useState(false)
   const [archiveWeek, setArchiveWeek] = useState<Week>('week1')
+  const [archiveDay, setArchiveDay] = useState<Day>('Monday')
 
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const pendingRef = useRef(new Map<string, string>())
@@ -76,7 +87,6 @@ export default function Dashboard() {
           return
         }
         const remote = snapshot.data() as SchedulePlan
-        // Migrate existing plans that predate the startDate field.
         if (!remote.startDate) {
           const startDate = currentCycleStart()
           void setDoc(planDoc(), { startDate }, { merge: true })
@@ -109,21 +119,13 @@ export default function Dashboard() {
       inFlightRef.current += 1
       setSaveState('pending')
       try {
-        await setDoc(
-          planDoc(),
-          { [week]: { [day]: { [subject]: value } } },
-          { merge: true },
-        )
-        if (pendingRef.current.get(key) === value) {
-          pendingRef.current.delete(key)
-        }
+        await setDoc(planDoc(), { [week]: { [day]: { [subject]: value } } }, { merge: true })
+        if (pendingRef.current.get(key) === value) pendingRef.current.delete(key)
       } catch (err) {
         console.error('Failed to save lesson note:', err)
       } finally {
         inFlightRef.current -= 1
-        if (inFlightRef.current === 0 && timersRef.current.size === 0) {
-          setSaveState('saved')
-        }
+        if (inFlightRef.current === 0 && timersRef.current.size === 0) setSaveState('saved')
       }
     },
     [],
@@ -133,35 +135,24 @@ export default function Dashboard() {
     (week: Week, day: Day, subject: Subject, value: string) => {
       setPlan((prev) => {
         if (!prev) return prev
-        return {
-          ...prev,
-          [week]: {
-            ...prev[week],
-            [day]: { ...prev[week][day], [subject]: value },
-          },
-        }
+        return { ...prev, [week]: { ...prev[week], [day]: { ...prev[week][day], [subject]: value } } }
       })
       const key = cellKey(week, day, subject)
       pendingRef.current.set(key, value)
       setSaveState('pending')
       const existing = timersRef.current.get(key)
       if (existing) clearTimeout(existing)
-      timersRef.current.set(
-        key,
-        setTimeout(() => {
-          timersRef.current.delete(key)
-          void flushCell(week, day, subject, value)
-        }, DEBOUNCE_MS),
-      )
+      timersRef.current.set(key, setTimeout(() => {
+        timersRef.current.delete(key)
+        void flushCell(week, day, subject, value)
+      }, DEBOUNCE_MS))
     },
     [flushCell],
   )
 
   useEffect(() => {
     const timers = timersRef.current
-    return () => {
-      for (const t of timers.values()) clearTimeout(t)
-    }
+    return () => { for (const t of timers.values()) clearTimeout(t) }
   }, [])
 
   async function handleStartNewCycle() {
@@ -182,8 +173,7 @@ export default function Dashboard() {
     setView({ type: 'archive-list', items: null })
     try {
       const snap = await getDocs(query(cyclesCol(), orderBy('startDate', 'desc')))
-      const items = snap.docs.map((d) => ({ id: d.id, startDate: d.id }))
-      setView({ type: 'archive-list', items })
+      setView({ type: 'archive-list', items: snap.docs.map((d) => ({ id: d.id, startDate: d.id })) })
     } catch (err) {
       console.error('Failed to load archives:', err)
       setView({ type: 'archive-list', items: [] })
@@ -193,9 +183,7 @@ export default function Dashboard() {
   async function handleViewArchive(item: ArchiveItem) {
     try {
       const snap = await getDoc(cycleDoc(item.id))
-      if (snap.exists()) {
-        setView({ type: 'archive-detail', plan: snap.data() as SchedulePlan })
-      }
+      if (snap.exists()) setView({ type: 'archive-detail', plan: snap.data() as SchedulePlan })
     } catch (err) {
       console.error('Failed to load archive:', err)
     }
@@ -203,10 +191,10 @@ export default function Dashboard() {
 
   if (!plan) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="flex items-center gap-3 text-slate-500">
-          <Loader2 size={20} className="animate-spin" aria-hidden="true" />
-          <span className="text-sm font-medium">Loading the team plan…</span>
+      <div className="flex min-h-screen items-center justify-center bg-stone-50">
+        <div className="flex items-center gap-3 text-stone-400">
+          <Loader2 size={18} className="animate-spin" />
+          <span className="text-sm tracking-wide">Loading…</span>
         </div>
       </div>
     )
@@ -215,37 +203,39 @@ export default function Dashboard() {
   // ── Archive list ──────────────────────────────────────────────────────────
   if (view.type === 'archive-list') {
     return (
-      <div className="min-h-screen bg-slate-100">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
-            <button
-              onClick={() => setView({ type: 'current' })}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-              Back to Current Cycle
-            </button>
-          </div>
-        </header>
-        <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Past Cycles</h2>
+      <div className="min-h-screen bg-stone-50">
+        <AppHeader
+          plan={plan}
+          saveState={saveState}
+          onArchives={() => void handleOpenArchives()}
+          onNewCycle={() => setShowConfirm(true)}
+          onSignOut={() => void signOut(auth)}
+        />
+        <main className="mx-auto max-w-xl px-6 py-10">
+          <button
+            onClick={() => setView({ type: 'current' })}
+            className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-400 hover:text-stone-700 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Back to planner
+          </button>
+          <h2 className="mb-6 text-xs uppercase tracking-widest text-stone-400">Past cycles</h2>
           {view.items === null ? (
-            <div className="flex justify-center py-12">
-              <Loader2 size={20} className="animate-spin text-indigo-500" aria-hidden="true" />
+            <div className="flex justify-center py-16">
+              <Loader2 size={18} className="animate-spin text-stone-300" />
             </div>
           ) : view.items.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              No archived cycles yet. Use "New Cycle" to archive the current one.
-            </p>
+            <p className="text-sm text-stone-400">No archived cycles yet.</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-stone-100">
               {view.items.map((item) => (
                 <li key={item.id}>
                   <button
                     onClick={() => void handleViewArchive(item)}
-                    className="w-full rounded-xl bg-white px-4 py-3 text-left text-sm font-medium text-slate-800 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:ring-indigo-200"
+                    className="flex w-full items-center justify-between py-4 text-left text-sm text-stone-700 hover:text-stone-900 transition-colors group"
                   >
-                    {formatCycleRange(item.startDate)}
+                    <span>{formatCycleRange(item.startDate)}</span>
+                    <ChevronRight size={14} className="text-stone-300 group-hover:text-stone-500 transition-colors" />
                   </button>
                 </li>
               ))}
@@ -256,185 +246,90 @@ export default function Dashboard() {
     )
   }
 
-  // ── Archive detail (read-only) ────────────────────────────────────────────
+  // ── Archive detail ────────────────────────────────────────────────────────
   if (view.type === 'archive-detail') {
-    const archivePlan = view.plan
+    const ap = view.plan
     return (
-      <div className="min-h-screen bg-slate-100">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6">
-            <button
-              onClick={() => void handleOpenArchives()}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-              Back to Archives
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-400 text-white">
-                <Archive size={18} aria-hidden="true" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold leading-tight text-slate-900">
-                  Archived Cycle
-                </h1>
-                <p className="text-xs text-slate-500">{formatCycleRange(archivePlan.startDate)}</p>
-              </div>
-            </div>
-            <div
-              role="tablist"
-              aria-label="Select week"
-              className="ml-auto flex rounded-lg bg-slate-100 p-1"
-            >
-              {WEEKS.map((week) => (
-                <button
-                  key={week}
-                  role="tab"
-                  aria-selected={archiveWeek === week}
-                  onClick={() => setArchiveWeek(week)}
-                  className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition ${
-                    archiveWeek === week
-                      ? 'bg-white text-indigo-700 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <CalendarDays size={14} aria-hidden="true" />
-                  {WEEK_LABELS[week]}
-                </button>
-              ))}
-            </div>
+      <div className="min-h-screen bg-stone-50">
+        <AppHeader
+          plan={plan}
+          saveState={saveState}
+          onArchives={() => void handleOpenArchives()}
+          onNewCycle={() => setShowConfirm(true)}
+          onSignOut={() => void signOut(auth)}
+        />
+        <main className="mx-auto max-w-2xl px-6 py-10">
+          <button
+            onClick={() => void handleOpenArchives()}
+            className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-400 hover:text-stone-700 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Archives
+          </button>
+          <div className="mb-1 flex items-center gap-2">
+            <Archive size={13} className="text-stone-400" />
+            <span className="text-xs uppercase tracking-widest text-stone-400">Archived cycle</span>
           </div>
-        </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-          <PlanGrid plan={archivePlan} activeWeek={archiveWeek} readOnly />
-          <p className="mt-3 text-center text-xs text-slate-400">
-            Read-only archive · {WEEK_LABELS[archiveWeek]} · {formatCycleRange(archivePlan.startDate)}
-          </p>
+          <p className="mb-8 text-lg font-light text-stone-800">{formatCycleRange(ap.startDate)}</p>
+          <PlannerView
+            plan={ap}
+            activeWeek={archiveWeek}
+            activeDay={archiveDay}
+            readOnly
+            onWeekChange={setArchiveWeek}
+            onDayChange={setArchiveDay}
+          />
         </main>
       </div>
     )
   }
 
-  // ── Current cycle ─────────────────────────────────────────────────────────
+  // ── Current planner ───────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
-              <BookOpen size={18} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold leading-tight text-slate-900">
-                4th Grade Team Planner
-              </h1>
-              <p className="text-xs text-slate-500">{formatCycleRange(plan.startDate)}</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-stone-50">
+      <AppHeader
+        plan={plan}
+        saveState={saveState}
+        onArchives={() => void handleOpenArchives()}
+        onNewCycle={() => setShowConfirm(true)}
+        onSignOut={() => void signOut(auth)}
+      />
 
-          <div
-            role="tablist"
-            aria-label="Select week"
-            className="ml-auto flex rounded-lg bg-slate-100 p-1"
-          >
-            {WEEKS.map((week) => (
-              <button
-                key={week}
-                role="tab"
-                aria-selected={activeWeek === week}
-                onClick={() => setActiveWeek(week)}
-                className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition ${
-                  activeWeek === week
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <CalendarDays size={14} aria-hidden="true" />
-                {WEEK_LABELS[week]}
-              </button>
-            ))}
-          </div>
-
-          <div
-            className="flex w-32 items-center gap-1.5 text-xs font-medium text-slate-500"
-            aria-live="polite"
-          >
-            {saveState === 'pending' && (
-              <>
-                <CloudUpload size={14} className="text-amber-500" aria-hidden="true" />
-                Saving…
-              </>
-            )}
-            {saveState === 'saved' && (
-              <>
-                <Check size={14} className="text-emerald-500" aria-hidden="true" />
-                All changes saved
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={() => void handleOpenArchives()}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <Archive size={14} aria-hidden="true" />
-            Archives
-          </button>
-
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700"
-          >
-            <Plus size={14} aria-hidden="true" />
-            New Cycle
-          </button>
-
-          <button
-            onClick={() => void signOut(auth)}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <LogOut size={14} aria-hidden="true" />
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <PlanGrid plan={plan} activeWeek={activeWeek} onChange={handleCellChange} />
-        <p className="mt-3 text-center text-xs text-slate-400">
-          Edits sync to the whole team in real time · {WEEK_LABELS[activeWeek]} ·{' '}
-          {formatCycleRange(plan.startDate)}
-        </p>
+      <main className="mx-auto max-w-2xl px-6 py-10">
+        <PlannerView
+          plan={plan}
+          activeWeek={activeWeek}
+          activeDay={activeDay}
+          onWeekChange={setActiveWeek}
+          onDayChange={setActiveDay}
+          onChange={handleCellChange}
+        />
       </main>
 
       {showConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="mb-2 text-base font-semibold text-slate-900">Start a new cycle?</h2>
-            <p className="mb-6 text-sm text-slate-600">
-              The current cycle ({formatCycleRange(plan.startDate)}) will be saved to Archives.
-              The next cycle will cover{' '}
-              <strong>{formatCycleRange(nextCycleStart(plan.startDate))}</strong>.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl">
+            <p className="mb-1 text-xs uppercase tracking-widest text-stone-400">New cycle</p>
+            <h2 className="mb-4 text-base font-medium text-stone-900">Archive this cycle?</h2>
+            <p className="mb-8 text-sm leading-relaxed text-stone-500">
+              {formatCycleRange(plan.startDate)} will be saved to Archives.
+              The next cycle will cover <span className="text-stone-800">{formatCycleRange(nextCycleStart(plan.startDate))}</span>.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={cycling}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg px-4 py-2 text-sm text-stone-500 hover:text-stone-900 transition-colors disabled:opacity-40"
               >
                 Cancel
               </button>
               <button
                 onClick={() => void handleStartNewCycle()}
                 disabled={cycling}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors disabled:opacity-40"
               >
-                {cycling && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
-                Start New Cycle
+                {cycling && <Loader2 size={14} className="animate-spin" />}
+                Start new cycle
               </button>
             </div>
           </div>
@@ -444,85 +339,176 @@ export default function Dashboard() {
   )
 }
 
-function PlanGrid({
+// ── Shared header ─────────────────────────────────────────────────────────────
+
+function AppHeader({
+  plan,
+  saveState,
+  onArchives,
+  onNewCycle,
+  onSignOut,
+}: {
+  plan: SchedulePlan
+  saveState: SaveState
+  onArchives: () => void
+  onNewCycle: () => void
+  onSignOut: () => void
+}) {
+  return (
+    <header className="sticky top-0 z-10 border-b border-stone-100 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-2xl items-center gap-4 px-6 py-4">
+        <div className="flex items-center gap-2.5">
+          <BookOpen size={15} className="text-stone-400" aria-hidden="true" />
+          <span className="text-sm font-medium text-stone-800">4th Grade Team Planner</span>
+          <span className="text-stone-200">·</span>
+          <span className="text-xs text-stone-400">{formatCycleRange(plan.startDate)}</span>
+        </div>
+
+        <div className="ml-auto flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-xs text-stone-400" aria-live="polite">
+            {saveState === 'pending' && <><CloudUpload size={12} className="text-amber-400" />Saving</>}
+            {saveState === 'saved' && <><Check size={12} className="text-emerald-400" />Saved</>}
+          </div>
+
+          <button onClick={onArchives} className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-700 transition-colors">
+            <Archive size={13} />
+            Archives
+          </button>
+
+          <button onClick={onNewCycle} className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-700 transition-colors">
+            New cycle
+            <ChevronRight size={13} />
+          </button>
+
+          <button onClick={onSignOut} className="text-stone-300 hover:text-stone-600 transition-colors">
+            <LogOut size={14} aria-label="Sign out" />
+          </button>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+// ── Planner view (week selector + day strip + day page) ───────────────────────
+
+function PlannerView({
   plan,
   activeWeek,
+  activeDay,
   readOnly = false,
+  onWeekChange,
+  onDayChange,
   onChange,
 }: {
   plan: SchedulePlan
   activeWeek: Week
+  activeDay: Day
   readOnly?: boolean
+  onWeekChange: (w: Week) => void
+  onDayChange: (d: Day) => void
   onChange?: (week: Week, day: Day, subject: Subject, value: string) => void
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="grid min-w-[900px] grid-cols-6">
-        <div className="border-b border-slate-200 bg-slate-50 px-3 py-3" />
-        {DAYS.map((day) => (
-          <div
-            key={day}
-            className="border-b border-l border-slate-200 bg-slate-50 px-3 py-3 text-center"
+    <div>
+      {/* Week selector */}
+      <div className="mb-6 flex gap-1 rounded-xl bg-stone-100 p-1">
+        {WEEKS.map((week) => (
+          <button
+            key={week}
+            onClick={() => onWeekChange(week)}
+            className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
+              activeWeek === week
+                ? 'bg-white text-stone-900 shadow-sm'
+                : 'text-stone-400 hover:text-stone-600'
+            }`}
           >
-            <div className="text-sm font-semibold text-slate-700">{day}</div>
-            <div className="text-xs font-normal text-slate-400">
-              {formatShortDate(getCycleDate(plan.startDate, activeWeek, day))}
+            {WEEK_LABELS[week]}
+            <span className={`ml-2 font-normal ${activeWeek === week ? 'text-stone-500' : 'text-stone-300'}`}>
+              {plan.startDate ? formatWeekRange(plan.startDate, week) : ''}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Day strip */}
+      <div className="mb-6 flex gap-2">
+        {DAYS.map((day) => {
+          const date = getCycleDate(plan.startDate, activeWeek, day)
+          const isActive = activeDay === day
+          return (
+            <button
+              key={day}
+              onClick={() => onDayChange(day)}
+              className={`flex flex-1 flex-col items-center rounded-xl py-3 transition-all duration-150 ${
+                isActive
+                  ? 'bg-white shadow-md ring-1 ring-stone-100'
+                  : 'hover:bg-white/60'
+              }`}
+            >
+              <span className={`mb-1 text-[10px] tracking-widest font-medium transition-colors ${
+                isActive ? 'text-stone-400' : 'text-stone-300'
+              }`}>
+                {DAY_ABBR[day]}
+              </span>
+              <span className={`text-xl font-light leading-none transition-colors ${
+                isActive ? 'text-stone-900' : 'text-stone-400'
+              }`}>
+                {date.getDate()}
+              </span>
+              <span className={`mt-1 text-[10px] transition-colors ${
+                isActive ? 'text-stone-400' : 'text-stone-300'
+              }`}>
+                {date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Planner page */}
+      <div className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm">
+        {/* Page header */}
+        <div className="border-b border-stone-100 px-8 py-5">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400">
+            {DAY_ABBR[activeDay]}
+          </p>
+          <p className="mt-0.5 text-sm font-light text-stone-500">
+            {formatFullDate(getCycleDate(plan.startDate, activeWeek, activeDay))}
+          </p>
+        </div>
+
+        {/* Subject sections */}
+        {SUBJECTS.map((subject, i) => (
+          <div key={subject} className={i > 0 ? 'border-t border-stone-100' : ''}>
+            <div className="px-8 py-5">
+              <p className="mb-3 text-[10px] uppercase tracking-widest text-stone-400">{subject}</p>
+              {readOnly ? (
+                <div className="min-h-[88px] whitespace-pre-wrap text-sm leading-7 text-stone-700">
+                  {plan[activeWeek][activeDay][subject] || (
+                    <span className="text-stone-200">—</span>
+                  )}
+                </div>
+              ) : (
+                <textarea
+                  value={plan[activeWeek][activeDay][subject]}
+                  onChange={(e) => onChange?.(activeWeek, activeDay, subject, e.target.value)}
+                  aria-label={`${subject} on ${activeDay}`}
+                  placeholder="Add lesson notes…"
+                  rows={4}
+                  className="w-full resize-none bg-transparent text-sm leading-7 text-stone-800 outline-none placeholder:text-stone-200"
+                  style={{
+                    backgroundImage:
+                      'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 27px, #f1f5f9 28px)',
+                    lineHeight: '28px',
+                    paddingTop: '2px',
+                  }}
+                />
+              )}
             </div>
           </div>
-        ))}
-        {SUBJECTS.map((subject) => (
-          <SubjectRow
-            key={subject}
-            subject={subject}
-            week={activeWeek}
-            plan={plan}
-            readOnly={readOnly}
-            onChange={onChange}
-          />
         ))}
       </div>
     </div>
   )
 }
 
-function SubjectRow({
-  subject,
-  week,
-  plan,
-  readOnly = false,
-  onChange,
-}: {
-  subject: Subject
-  week: Week
-  plan: SchedulePlan
-  readOnly?: boolean
-  onChange?: (week: Week, day: Day, subject: Subject, value: string) => void
-}) {
-  return (
-    <>
-      <div className="flex items-center border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
-        {subject}
-      </div>
-      {DAYS.map((day) => (
-        <div key={day} className="border-b border-l border-slate-200 p-1.5">
-          {readOnly ? (
-            <div className="h-full min-h-[6rem] w-full whitespace-pre-wrap rounded-md p-2 text-sm text-slate-800">
-              {plan[week][day][subject] || (
-                <span className="text-slate-300">—</span>
-              )}
-            </div>
-          ) : (
-            <textarea
-              value={plan[week][day][subject]}
-              onChange={(e) => onChange?.(week, day, subject, e.target.value)}
-              aria-label={`${subject} on ${day}, ${WEEK_LABELS[week]}`}
-              placeholder="Lesson notes…"
-              rows={4}
-              className="h-full w-full resize-none rounded-md border border-transparent bg-transparent p-2 text-sm text-slate-800 placeholder:text-slate-300 transition focus:border-indigo-300 focus:bg-indigo-50/40 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            />
-          )}
-        </div>
-      ))}
-    </>
-  )
-}

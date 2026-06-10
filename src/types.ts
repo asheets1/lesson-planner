@@ -68,6 +68,21 @@ export function formatCycleRange(startDate: string): string {
   return `${formatShortDate(start)} – ${formatShortDate(end)}, ${end.getFullYear()}`
 }
 
+export function formatWeekRange(startDate: string, week: Week): string {
+  const s = getCycleDate(startDate, week, 'Monday')
+  const e = getCycleDate(startDate, week, 'Friday')
+  return `${formatShortDate(s)} – ${formatShortDate(e)}`
+}
+
+export function formatFullDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 export function createEmptyPlan(startDate?: string): SchedulePlan {
   const emptyDay = (): DayPlan =>
     Object.fromEntries(SUBJECTS.map((s) => [s, ''])) as DayPlan
