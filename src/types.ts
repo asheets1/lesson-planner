@@ -50,10 +50,13 @@ export const WEEK_LABELS: Record<Week, string> = {
   week2: 'Week 2',
 }
 
-function parseLocalDate(s: string): Date {
+export function parseISODate(s: string): Date {
   const [y, m, d] = s.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
+
+/** @deprecated use parseISODate */
+const parseLocalDate = parseISODate
 
 function toISODate(d: Date): string {
   return [
@@ -108,6 +111,22 @@ export function formatFullDate(date: Date): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/** Which week of a cycle a given date falls in, or null if outside the cycle. */
+export function getWeekForDate(startDate: string, date: Date): Week | null {
+  const start = parseISODate(startDate)
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const days = Math.round((target.getTime() - start.getTime()) / 86400000)
+  if (days < 0 || days > 13) return null
+  return days < 7 ? 'week1' : 'week2'
+}
+
+/** Mon–Fri Day for a Date, or null if it's a weekend. */
+export function getDayForDate(date: Date): Day | null {
+  const dow = date.getDay()
+  if (dow === 0 || dow === 6) return null
+  return DAYS[dow - 1]
 }
 
 export function getInitials(name: string): string {
