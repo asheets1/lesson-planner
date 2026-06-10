@@ -276,8 +276,8 @@ export default function Dashboard() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (!plan || profileLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <div className="flex items-center gap-3 text-stone-400">
+      <div className="flex min-h-screen items-center justify-center bg-stone-100">
+        <div className="flex items-center gap-3 text-stone-500">
           <Loader2 size={18} className="animate-spin" />
           <span className="text-sm tracking-wide">Loading…</span>
         </div>
@@ -291,7 +291,7 @@ export default function Dashboard() {
   // ── Calendar ──────────────────────────────────────────────────────────────
   if (view.type === 'calendar') {
     return (
-      <div className="min-h-screen bg-stone-50">
+      <div className="min-h-screen bg-stone-100">
         {needsProfile && <ProfileSetup onComplete={handleProfileComplete} />}
         <AppHeader plan={plan} saveState={saveState}
           onCalendar={() => void openCalendar()}
@@ -299,7 +299,7 @@ export default function Dashboard() {
           onSignOut={() => void signOut(auth)} />
         <main className="mx-auto max-w-xl px-6 py-10">
           <button onClick={() => setView({ type: 'current' })}
-            className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-400 hover:text-stone-700 transition-colors">
+            className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-800 transition-colors">
             <ArrowLeft size={14} /> Back to planner
           </button>
           <CalendarView
@@ -319,7 +319,7 @@ export default function Dashboard() {
   if (view.type === 'archive-detail') {
     const ap = view.plan
     return (
-      <div className="min-h-screen bg-stone-50">
+      <div className="min-h-screen bg-stone-100">
         {needsProfile && <ProfileSetup onComplete={handleProfileComplete} />}
         <AppHeader plan={plan} saveState={saveState}
           onCalendar={() => void openCalendar()}
@@ -327,12 +327,12 @@ export default function Dashboard() {
           onSignOut={() => void signOut(auth)} />
         <main className="mx-auto max-w-2xl px-6 py-10">
           <button onClick={() => void openCalendar()}
-            className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-400 hover:text-stone-700 transition-colors">
+            className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-800 transition-colors">
             <ArrowLeft size={14} /> Back to calendar
           </button>
           <div className="mb-1 flex items-center gap-2">
-            <Archive size={13} className="text-stone-400" />
-            <span className="text-xs uppercase tracking-widest text-stone-400">Archived cycle</span>
+            <Archive size={13} className="text-stone-500" />
+            <span className="text-xs uppercase tracking-widest text-stone-500">Archived cycle</span>
           </div>
           <p className="mb-8 text-lg font-light text-stone-800">{formatCycleRange(ap.startDate)}</p>
           <PlannerView
@@ -351,7 +351,7 @@ export default function Dashboard() {
 
   // ── Current planner ───────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-stone-100">
       {needsProfile && <ProfileSetup onComplete={handleProfileComplete} />}
       <AppHeader plan={plan} saveState={saveState}
         onCalendar={() => void openCalendar()}
@@ -381,28 +381,28 @@ function AppHeader({ plan, saveState, onCalendar, onNewCycle, onSignOut }: {
   onCalendar: () => void; onNewCycle: () => void; onSignOut: () => void
 }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-stone-100 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 backdrop-blur shadow-sm">
       <div className="mx-auto flex max-w-2xl items-center gap-4 px-6 py-4">
         <div className="flex items-center gap-2.5">
-          <BookOpen size={15} className="text-stone-400" aria-hidden="true" />
-          <span className="text-sm font-medium text-stone-800">4th Grade Team Planner</span>
-          <span className="text-stone-200">·</span>
-          <span className="text-xs text-stone-400">{formatCycleRange(plan.startDate)}</span>
+          <BookOpen size={15} className="text-stone-500" aria-hidden="true" />
+          <span className="text-sm font-semibold text-stone-800">4th Grade Team Planner</span>
+          <span className="text-stone-300">·</span>
+          <span className="text-xs text-stone-500">{formatCycleRange(plan.startDate)}</span>
         </div>
         <div className="ml-auto flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-xs text-stone-400" aria-live="polite">
-            {saveState === 'pending' && <><CloudUpload size={12} className="text-amber-400" />Saving</>}
-            {saveState === 'saved' && <><Check size={12} className="text-emerald-400" />Saved</>}
+          <div className="flex items-center gap-1.5 text-xs text-stone-500" aria-live="polite">
+            {saveState === 'pending' && <><CloudUpload size={12} className="text-amber-500" />Saving</>}
+            {saveState === 'saved' && <><Check size={12} className="text-emerald-500" />Saved</>}
           </div>
           <button onClick={onCalendar}
-            className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-700 transition-colors">
+            className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 transition-colors">
             <CalendarDays size={13} /> Calendar
           </button>
           <button onClick={onNewCycle}
-            className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-700 transition-colors">
+            className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 transition-colors">
             New cycle <ChevronRight size={13} />
           </button>
-          <button onClick={onSignOut} className="text-stone-300 hover:text-stone-600 transition-colors">
+          <button onClick={onSignOut} className="text-stone-400 hover:text-stone-700 transition-colors">
             <LogOut size={14} aria-label="Sign out" />
           </button>
         </div>
@@ -514,15 +514,15 @@ function CalendarView({
       {/* Day-of-week headers */}
       <div className="mb-2 grid grid-cols-7 text-center">
         {CAL_DAY_LABELS.map((l) => (
-          <span key={l} className="text-[10px] uppercase tracking-widest text-stone-300">
+          <span key={l} className="text-[11px] font-medium uppercase tracking-widest text-stone-500">
             {l}
           </span>
         ))}
       </div>
 
       {/* Calendar grid */}
-      <div className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm">
-        <div className="grid grid-cols-7 divide-x divide-y divide-stone-50">
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-md">
+        <div className="grid grid-cols-7 divide-x divide-y divide-stone-100">
           {slots.map((date, i) => {
             if (!date) {
               return <div key={i} className="h-14 bg-stone-50/40" />
@@ -534,7 +534,7 @@ function CalendarView({
             const clickable = !isWeekend && !!cycle
 
             let bgClass = ''
-            let textClass = isWeekend ? 'text-stone-300' : 'text-stone-400'
+            let textClass = isWeekend ? 'text-stone-400' : 'text-stone-600'
             let hoverClass = ''
 
             if (cycle) {
@@ -581,15 +581,15 @@ function CalendarView({
 
       {/* Legend */}
       <div className="mt-4 flex gap-5">
-        <div className="flex items-center gap-1.5 text-xs text-stone-400">
+        <div className="flex items-center gap-1.5 text-xs text-stone-600">
           <div className="h-3 w-3 rounded-sm bg-stone-900" />
           Current cycle
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-stone-400">
-          <div className="h-3 w-3 rounded-sm bg-stone-200" />
+        <div className="flex items-center gap-1.5 text-xs text-stone-600">
+          <div className="h-3 w-3 rounded-sm bg-stone-300" />
           Archived
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-stone-400">
+        <div className="flex items-center gap-1.5 text-xs text-stone-500">
           Click a weekday to open that week
         </div>
       </div>
@@ -597,12 +597,12 @@ function CalendarView({
       {/* Archive list below calendar */}
       {archivedCycles === null ? (
         <div className="mt-10 flex justify-center">
-          <Loader2 size={18} className="animate-spin text-stone-300" />
+          <Loader2 size={18} className="animate-spin text-stone-400" />
         </div>
       ) : archivedCycles.length > 0 ? (
         <div className="mt-10">
-          <h3 className="mb-4 text-xs uppercase tracking-widest text-stone-400">All archived cycles</h3>
-          <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm">
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-stone-500">All archived cycles</h3>
+          <ul className="divide-y divide-stone-200 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-md">
             {archivedCycles.map((item) => (
               <li key={item.id}>
                 <button
@@ -616,10 +616,10 @@ function CalendarView({
                   className="flex w-full items-center justify-between px-5 py-4 text-sm text-stone-700 transition-colors hover:bg-stone-50 group"
                 >
                   <div className="flex items-center gap-3">
-                    <Archive size={13} className="text-stone-300" />
-                    <span>{formatCycleRange(item.startDate)}</span>
+                    <Archive size={13} className="text-stone-400" />
+                    <span className="font-medium">{formatCycleRange(item.startDate)}</span>
                   </div>
-                  <ChevronRight size={14} className="text-stone-200 transition-colors group-hover:text-stone-400" />
+                  <ChevronRight size={14} className="text-stone-300 transition-colors group-hover:text-stone-600" />
                 </button>
               </li>
             ))}
@@ -682,14 +682,14 @@ function PlannerView({
   return (
     <div>
       {/* Week selector */}
-      <div className="mb-6 flex gap-1 rounded-xl bg-stone-100 p-1">
+      <div className="mb-6 flex gap-1 rounded-xl bg-stone-200 p-1">
         {WEEKS.map((week) => (
           <button key={week} onClick={() => onWeekChange(week)}
-            className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
-              activeWeek === week ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'
+            className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
+              activeWeek === week ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
             }`}>
             {WEEK_LABELS[week]}
-            <span className={`ml-2 font-normal ${activeWeek === week ? 'text-stone-500' : 'text-stone-300'}`}>
+            <span className={`ml-2 font-normal ${activeWeek === week ? 'text-stone-600' : 'text-stone-400'}`}>
               {plan.startDate ? formatWeekRange(plan.startDate, week) : ''}
             </span>
           </button>
@@ -704,18 +704,18 @@ function PlannerView({
           return (
             <button key={day} onClick={() => onDayChange(day)}
               className={`flex flex-1 flex-col items-center rounded-xl py-3 transition-all duration-150 ${
-                isActive ? 'bg-white shadow-md ring-1 ring-stone-100' : 'hover:bg-white/60'
+                isActive ? 'bg-white shadow-md ring-1 ring-stone-200' : 'hover:bg-white/80'
               }`}>
-              <span className={`mb-1 text-[10px] tracking-widest font-medium transition-colors ${
-                isActive ? 'text-stone-400' : 'text-stone-300'}`}>
+              <span className={`mb-1 text-[10px] tracking-widest font-semibold transition-colors ${
+                isActive ? 'text-stone-500' : 'text-stone-400'}`}>
                 {DAY_ABBR[day]}
               </span>
-              <span className={`text-xl font-light leading-none transition-colors ${
-                isActive ? 'text-stone-900' : 'text-stone-400'}`}>
+              <span className={`text-xl font-medium leading-none transition-colors ${
+                isActive ? 'text-stone-900' : 'text-stone-600'}`}>
                 {date.getDate()}
               </span>
-              <span className={`mt-1 text-[10px] transition-colors ${
-                isActive ? 'text-stone-400' : 'text-stone-300'}`}>
+              <span className={`mt-1 text-[10px] font-medium transition-colors ${
+                isActive ? 'text-stone-500' : 'text-stone-400'}`}>
                 {date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
               </span>
             </button>
@@ -724,10 +724,10 @@ function PlannerView({
       </div>
 
       {/* Planner page */}
-      <div className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm">
-        <div className="border-b border-stone-100 px-8 py-5">
-          <p className="text-[10px] uppercase tracking-widest text-stone-400">{DAY_ABBR[activeDay]}</p>
-          <p className="mt-0.5 text-sm font-light text-stone-500">
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-md">
+        <div className="border-b border-stone-200 bg-stone-50 px-8 py-5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">{DAY_ABBR[activeDay]}</p>
+          <p className="mt-0.5 text-sm font-medium text-stone-700">
             {formatFullDate(getCycleDate(plan.startDate, activeWeek, activeDay))}
           </p>
         </div>
@@ -768,17 +768,17 @@ function SubjectSection({ subject, week, day, plan, myUid, userProfiles,
   const legacyNote = notes['legacy']
 
   return (
-    <div className="border-t border-stone-100">
+    <div className="border-t border-stone-200">
       <button onClick={onToggleTodos}
         className="flex w-full items-center justify-between px-8 py-4 transition-colors hover:bg-stone-50">
-        <span className="text-[10px] uppercase tracking-widest text-stone-400">{subject}</span>
+        <span className="text-xs font-semibold uppercase tracking-widest text-stone-600">{subject}</span>
         <div className="flex items-center gap-2">
           {pendingTodos > 0 && (
-            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-500">
+            <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-700">
               {pendingTodos} open
             </span>
           )}
-          <ListTodo size={13} className={todosOpen ? 'text-stone-600' : 'text-stone-300'} />
+          <ListTodo size={13} className={todosOpen ? 'text-stone-700' : 'text-stone-400'} />
         </div>
       </button>
       <div className="px-8 pb-6">
@@ -790,9 +790,9 @@ function SubjectSection({ subject, week, day, plan, myUid, userProfiles,
           <UserNoteBlock key={uid} uid={uid} profile={userProfiles[uid]} value={text} editable={false} />
         ))}
         {legacyNote && (
-          <div className="mt-2 rounded-lg bg-stone-50 p-3">
-            <p className="mb-1 text-[10px] uppercase tracking-widest text-stone-400">Previous notes</p>
-            <p className="text-sm leading-6 text-stone-500">{legacyNote}</p>
+          <div className="mt-2 rounded-lg bg-stone-100 p-3">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-stone-500">Previous notes</p>
+            <p className="text-sm leading-6 text-stone-700">{legacyNote}</p>
           </div>
         )}
         {readOnly && (
@@ -825,22 +825,22 @@ function UserNoteBlock({ uid, profile, value, editable, onChange }: {
   return (
     <div className="mb-5 last:mb-0">
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
           style={color
-            ? { backgroundColor: color.bg, color: color.text, border: `1px solid ${color.border}` }
-            : { backgroundColor: '#f5f5f4', color: '#78716c', border: '1px solid #e7e5e4' }}>
+            ? { backgroundColor: color.bg, color: color.text, border: `1.5px solid ${color.border}` }
+            : { backgroundColor: '#e7e5e4', color: '#44403c', border: '1.5px solid #d6d3d1' }}>
           {initials}
         </div>
-        <span className="text-xs text-stone-400">{name}</span>
+        <span className="text-xs font-semibold text-stone-600">{name}</span>
       </div>
       {editable ? (
         <textarea value={value} onChange={(e) => onChange?.(e.target.value)}
           placeholder="Add lesson notes…" rows={4}
-          className="w-full resize-none bg-transparent text-sm leading-7 text-stone-800 outline-none placeholder:text-stone-200"
-          style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 27px, #f1f5f9 28px)',
+          className="w-full resize-none bg-transparent text-sm leading-7 text-stone-900 outline-none placeholder:text-stone-400"
+          style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 27px, #e2e8f0 27px, #e2e8f0 28px)',
             lineHeight: '28px', paddingTop: '2px' }} />
       ) : (
-        <div className="min-h-[28px] text-sm leading-7 text-stone-600" style={{ whiteSpace: 'pre-wrap' }}>
+        <div className="min-h-[28px] text-sm leading-7 text-stone-700" style={{ whiteSpace: 'pre-wrap' }}>
           {value}
         </div>
       )}
@@ -866,10 +866,10 @@ function TodoPanel({ todos, userProfiles, readOnly, onAdd, onToggle, onDelete }:
   }
 
   return (
-    <div className="border-t border-stone-100 bg-stone-50/60 px-8 py-5">
-      <p className="mb-4 text-[10px] uppercase tracking-widest text-stone-400">To-do list</p>
+    <div className="border-t border-stone-200 bg-stone-50 px-8 py-5">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-stone-500">To-do list</p>
       {todos.length === 0 && (
-        <p className="mb-4 text-xs text-stone-300">No items yet — add one below.</p>
+        <p className="mb-4 text-xs text-stone-400">No items yet — add one below.</p>
       )}
       <ul className="mb-4 space-y-2.5">
         {todos.map((item) => {
@@ -879,24 +879,24 @@ function TodoPanel({ todos, userProfiles, readOnly, onAdd, onToggle, onDelete }:
             <li key={item.id} className="group flex items-start gap-3">
               <button onClick={() => void onToggle(item.id)} disabled={readOnly}
                 className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors
-                  ${item.done ? 'border-transparent bg-stone-800 text-white' : 'border-stone-300 hover:border-stone-600'}
+                  ${item.done ? 'border-transparent bg-stone-800 text-white' : 'border-stone-400 hover:border-stone-700'}
                   disabled:cursor-default`}>
                 {item.done && <Check size={9} />}
               </button>
               <span className={`flex-1 text-sm leading-snug transition-colors
-                ${item.done ? 'text-stone-300 line-through' : 'text-stone-700'}`}>
+                ${item.done ? 'text-stone-400 line-through' : 'text-stone-800'}`}>
                 {item.text}
               </span>
-              <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[8px] font-semibold"
+              <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[8px] font-bold"
                 style={color
                   ? { backgroundColor: color.bg, color: color.text, border: `1px solid ${color.border}` }
-                  : { backgroundColor: '#f5f5f4', color: '#78716c' }}
+                  : { backgroundColor: '#e7e5e4', color: '#44403c' }}
                 title={profile?.name ?? 'Unknown'}>
                 {profile?.initials ?? '?'}
               </div>
               {!readOnly && (
                 <button onClick={() => void onDelete(item.id)}
-                  className="mt-0.5 hidden text-stone-300 transition-colors hover:text-red-400 group-hover:block">
+                  className="mt-0.5 hidden text-stone-400 transition-colors hover:text-red-500 group-hover:block">
                   <Trash2 size={12} />
                 </button>
               )}
@@ -905,13 +905,13 @@ function TodoPanel({ todos, userProfiles, readOnly, onAdd, onToggle, onDelete }:
         })}
       </ul>
       {!readOnly && (
-        <div className="flex items-center gap-2 border-t border-stone-100 pt-4">
+        <div className="flex items-center gap-2 border-t border-stone-200 pt-4">
           <input type="text" value={newText} onChange={(e) => setNewText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
             placeholder="Add item…"
-            className="flex-1 bg-transparent text-sm text-stone-700 outline-none placeholder:text-stone-300" />
+            className="flex-1 bg-transparent text-sm text-stone-800 outline-none placeholder:text-stone-400" />
           <button onClick={handleAdd} disabled={!newText.trim()}
-            className="text-stone-400 transition-colors hover:text-stone-700 disabled:opacity-30">
+            className="text-stone-500 transition-colors hover:text-stone-800 disabled:opacity-30">
             <CirclePlus size={16} />
           </button>
         </div>
